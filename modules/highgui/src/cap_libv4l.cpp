@@ -1353,6 +1353,28 @@ static double icvGetPropertyCAM_V4L (CvCaptureCAM_V4L* capture,
       sprintf(name, "Exposure");
       capture->control.id = V4L2_CID_EXPOSURE;
       break;
+    case CV_CAP_PROP_FPS:
+      struct v4l2_streamparm streamparm;
+
+      memset (&streamparm, 0, sizeof (streamparm));
+      streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+      if (v4l2_ioctl(capture->deviceHandle, VIDIOC_G_PARM, &streamparm) < 0) {
+        fprintf(stderr, "HIGHGUI ERROR: V4L2: Unable to get parameters: %s\n", strerror(errno));
+        return -1;
+      }
+
+      if(streamparm.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
+        struct v4l2_fract *tpf;
+        tpf = &streamparm.parm.capture.timeperframe;
+
+        // this fraction is flipped so as to turn timeperframe into frames per time.
+        return (float)tpf->denominator / (float)tpf->numerator;
+      } else {
+        fprintf(stderr, "HIGHGUI ERROR: V4L2: timeperframe capability not supported by driver\n");
+        return -1;
+      }
+      break;
     default:
       sprintf(name, "<unknown property string>");
       capture->control.id = property_id;
